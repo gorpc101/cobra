@@ -1668,3 +1668,70 @@ func (c *Command) updateParentsPflags() {
 		c.parentsPflags.AddFlagSet(parent.PersistentFlags())
 	})
 }
+
+func (c *Command) GenDupCommand() *DupCommand {
+
+	if c.Name() == "help" {
+		return nil
+	}
+
+	dc := &DupCommand{
+		Use:         c.Use,
+		Aliases:     c.Aliases,
+		Short:       c.Short,
+		ArgAliases:  c.ArgAliases,
+		Annotations: c.Annotations,
+		Commands:    make([]*DupCommand, 0, len(c.commands)),
+	}
+	if c.flags != nil {
+		dc.Flags = c.flags.FlagUsages()
+	}
+	//if c.pflags != nil {
+	//	dc.Pflags = c.pflags.FlagUsages()
+	//}
+	//if c.lflags != nil {
+	//	dc.Lflags = c.lflags.FlagUsages()
+	//}
+	//if c.iflags != nil {
+	//	dc.Iflags = c.iflags.FlagUsages()
+	//}
+	//if c.parentsPflags != nil {
+	//	dc.ParentsPflags = c.parentsPflags.FlagUsages()
+	//}
+
+	if len(c.commands) == 0 {
+		return dc
+	}
+
+	for _, cc := range c.commands {
+		x := cc.GenDupCommand()
+		if x == nil {
+			continue
+		}
+		dc.Commands = append(dc.Commands, x)
+	}
+	return dc
+}
+
+type DupCommand struct {
+	Use         string
+	Aliases     []string `json:"Aliases,omitempty"`
+	Short       string
+	ValidArgs   []string `json`
+	ArgAliases  []string
+	Annotations map[string]string
+
+	// Flags is full set of Flags.
+	Flags string `json:"Flags,omitempty"`
+	// Pflags contains persistent Flags.
+	//Pflags string `json:"Pflags,omitempty"`
+	// Lflags contains local Flags.
+	//Lflags string `json:"Lflags,omitempty"`
+	// Iflags contains inherited Flags.
+	//Iflags string `json:"Iflags,omitempty"`
+	// ParentsPflags is all persistent Flags of cmd's parents.
+	//ParentsPflags string `json:"ParentsPflags,omitempty"`
+
+	// Commands is the list of Commands supported by this program.
+	Commands []*DupCommand `json:"Commands,omitempty"`
+}
