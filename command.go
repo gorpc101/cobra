@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -938,7 +939,25 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 	} else {
 		cmd, flags, err = c.Find(args)
 	}
+
 	if err != nil {
+		// If args[0] is another cobra cil
+		if strings.Contains(err.Error(), "unknown command") {
+			if _, err := exec.LookPath(args[0]); err == nil {
+				cmd := exec.Command(args[0])
+				if len(args) > 1 {
+					cmd.Args = args[1:]
+				}
+				buf, err := cmd.CombinedOutput()
+				fmt.Println(string(buf))
+
+				if err != nil {
+					os.Exit(1)
+				}
+				os.Exit(0)
+			}
+		}
+
 		// If found parse to a subcommand and then failed, talk about the subcommand
 		if cmd != nil {
 			c = cmd
