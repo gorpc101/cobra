@@ -18,6 +18,7 @@ package cobra
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -944,17 +945,16 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 		// If args[0] is another cobra cil
 		if strings.Contains(err.Error(), "unknown command") {
 			if _, err := exec.LookPath(args[0]); err == nil {
-				cmd := exec.Command(args[0])
-				if len(args) > 1 {
-					cmd.Args = args[1:]
+				if _, ok := linkedCmd[args[0]]; ok {
+					exe := exec.Command(args[0])
+					exe.Args = args[0:]
+					buf, err := exe.CombinedOutput()
+					fmt.Println(string(buf))
+					if err != nil {
+						os.Exit(1)
+					}
+					os.Exit(0)
 				}
-				buf, err := cmd.CombinedOutput()
-				fmt.Println(string(buf))
-
-				if err != nil {
-					os.Exit(1)
-				}
-				os.Exit(0)
 			}
 		}
 
@@ -1705,19 +1705,6 @@ func (c *Command) GenDupCommand() *DupCommand {
 	if c.flags != nil {
 		dc.Flags = c.flags.FlagUsages()
 	}
-	//if c.pflags != nil {
-	//	dc.Pflags = c.pflags.FlagUsages()
-	//}
-	//if c.lflags != nil {
-	//	dc.Lflags = c.lflags.FlagUsages()
-	//}
-	//if c.iflags != nil {
-	//	dc.Iflags = c.iflags.FlagUsages()
-	//}
-	//if c.parentsPflags != nil {
-	//	dc.ParentsPflags = c.parentsPflags.FlagUsages()
-	//}
-
 	if len(c.commands) == 0 {
 		return dc
 	}
@@ -1742,15 +1729,18 @@ type DupCommand struct {
 
 	// Flags is full set of Flags.
 	Flags string `json:"Flags,omitempty"`
-	// Pflags contains persistent Flags.
-	//Pflags string `json:"Pflags,omitempty"`
-	// Lflags contains local Flags.
-	//Lflags string `json:"Lflags,omitempty"`
-	// Iflags contains inherited Flags.
-	//Iflags string `json:"Iflags,omitempty"`
-	// ParentsPflags is all persistent Flags of cmd's parents.
-	//ParentsPflags string `json:"ParentsPflags,omitempty"`
 
 	// Commands is the list of Commands supported by this program.
 	Commands []*DupCommand `json:"Commands,omitempty"`
+}
+
+var linkedCmd = map[string]string{}
+
+func LinkCmd(cmd string) error {
+	p, err := exec.LookPath(cmd)
+	if err != nil {
+		return errors.New("not found")
+	}
+	linkedCmd[cmd] = p
+	return nil
 }
